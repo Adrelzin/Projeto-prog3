@@ -1,165 +1,172 @@
-import React, { useState } from 'react';
-import {
-  SafeAreaView,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, FlatList, StyleSheet, Platform } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
+import * as SQLite from 'expo-sqlite';
 
-export default function App() {
-  const [tarefas, setTarefas] = useState([
-    {
-      id: 1,
-      titulo: 'Fazer atividade de matemática',
-      concluida: false,
-    },
-    {
-      id: 2,
-      titulo: 'Estudar para a prova de português',
-      concluida: false,
-    },
-    {
-      id: 3,
-      titulo: 'Entregar trabalho de história',
-      concluida: true,
-    },
-  ]);
+function getApiUrl() {
+  const debuggerHost = Constants.expoConfig?.hostUri || Constants.manifest2?.extra?.expoGo?.debuggerHost;
+  const host = debuggerHost?.split(':')[0];
+  if (host) return `http://${host}:3000`;
+  return Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+}
 
-  function concluirTarefa(id) {
-    setTarefas(
-      tarefas.map(tarefa =>
-        tarefa.id === id
-          ? {
-              ...tarefa,
-              concluida: !tarefa.concluida,
-            }
-          : tarefa
-      )
-    );
-  }
+export const API_URL = getApiUrl();
+
+const colors = {
+  background: '#FAF6F1',
+  surface: '#FFFFFF',
+  tan: '#BF9B7A',
+  brown: '#593E2E',
+  olive: '#555934',
+  textPrimary: '#3A2B22',
+  textSecondary: '#7A6A5D',
+  border: '#E4D8CB',
+};
+
+export const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background, justifyContent: 'center', paddingHorizontal: 28 },
+  titulo: { fontSize: 28, fontWeight: '700', color: colors.brown, textAlign: 'center' },
+  subtitulo: { fontSize: 15, color: colors.textSecondary, textAlign: 'center', marginTop: 4, marginBottom: 32 },
+  input: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: colors.textPrimary, marginBottom: 14 },
+  botao: { backgroundColor: colors.olive, borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
+  botaoTexto: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  link: { color: colors.tan, textAlign: 'center', marginTop: 20, fontSize: 14 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 },
+  saudacao: { fontSize: 22, fontWeight: '700', color: colors.brown },
+  emailUsuario: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  sair: { fontSize: 14, color: colors.olive, fontWeight: '600' },
+  secaoTitulo: { fontSize: 16, fontWeight: '600', color: colors.textPrimary, marginBottom: 14 },
+  card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 18, marginBottom: 14 },
+  cardTitulo: { fontSize: 16, fontWeight: '600', color: colors.brown, marginBottom: 4 },
+  cardDescricao: { fontSize: 13, color: colors.textSecondary },
+  voltar: { fontSize: 14, color: colors.olive, fontWeight: '600' },
+  adicionar: { fontSize: 14, color: colors.olive, fontWeight: '600' },
+  formAgenda: { marginBottom: 20 },
+  dataBox: { backgroundColor: colors.tan, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10, marginRight: 14 },
+  dataTexto: { color: '#FFFFFF', fontWeight: '700', fontSize: 12 },
+  cardTipo: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+});
+
+function LoginScreen({ navigation }) {
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [carregando, setCarregando] = useState(false);
+
+  const handleLogin = async () => {
+    if (!email || !senha) return Alert.alert('Atenção', 'Preencha e-mail e senha.');
+    try {
+      setCarregando(true);
+      const res = await fetch(`${API_URL}/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, senha }) });
+      const dados = await res.json();
+      if (!res.ok) throw new Error();
+      await AsyncStorage.setItem('usuario', JSON.stringify(dados));
+      navigation.replace('Home', { usuario: dados });
+    } catch (error) {
+      Alert.alert('Erro ao entrar', 'E-mail ou senha inválidos.');
+    } finally {
+      setCarregando(false);
+    }
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-
-        <Text style={styles.titulo}>
-          Minha Rotina
-        </Text>
-
-        <Text style={styles.subtitulo}>
-          Organize seus estudos e atividades
-        </Text>
-
-        {/* RESUMO */}
-        <View style={styles.resumo}>
-
-          <View style={styles.resumoItem}>
-            <Text style={styles.numero}>
-              {tarefas.filter(t => !t.concluida).length}
-            </Text>
-
-            <Text style={styles.resumoTexto}>
-              Pendentes
-            </Text>
-          </View>
-
-          <View style={styles.resumoItem}>
-            <Text style={styles.numero}>
-              {tarefas.filter(t => t.concluida).length}
-            </Text>
-
-            <Text style={styles.resumoTexto}>
-              Concluídas
-            </Text>
-          </View>
-
-        </View>
-
-        {/* TAREFAS */}
-        <Text style={styles.tituloSecao}>
-          Tarefas de hoje
-        </Text>
-
-        {tarefas.map(tarefa => (
-          <TouchableOpacity
-            key={tarefa.id}
-            style={styles.tarefa}
-            onPress={() => concluirTarefa(tarefa.id)}
-          >
-
-            <View
-              style={[
-                styles.checkbox,
-                tarefa.concluida && styles.checkboxConcluido,
-              ]}
-            >
-              {tarefa.concluida && (
-                <Text style={styles.check}>
-                  ✓
-                </Text>
-              )}
-            </View>
-
-            <Text
-              style={[
-                styles.tarefaTexto,
-                tarefa.concluida && styles.tarefaConcluida,
-              ]}
-            >
-              {tarefa.titulo}
-            </Text>
-
-          </TouchableOpacity>
-        ))}
-
-        {/* ACESSO RÁPIDO */}
-        <Text style={styles.tituloSecao}>
-          Acesso rápido
-        </Text>
-
-        <View style={styles.menu}>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.icone}>📅</Text>
-            <Text style={styles.menuTexto}>
-              Agenda
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.icone}>🕐</Text>
-            <Text style={styles.menuTexto}>
-              Horários
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.icone}>🎯</Text>
-            <Text style={styles.menuTexto}>
-              Metas
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.icone}>📊</Text>
-            <Text style={styles.menuTexto}>
-              Notas
-            </Text>
-          </TouchableOpacity>
-
-        </View>
-
-      </ScrollView>
-    </SafeAreaView>
+    <View style={styles.container}>
+      <Text style={styles.titulo}>Rotina Escolar</Text>
+      <Text style={styles.subtitulo}>Entre para continuar</Text>
+      <TextInput style={styles.input} placeholder="E-mail" placeholderTextColor={colors.textSecondary} autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
+      <TextInput style={styles.input} placeholder="Senha" placeholderTextColor={colors.textSecondary} secureTextEntry value={senha} onChangeText={setSenha} />
+      <TouchableOpacity style={styles.botao} onPress={handleLogin} disabled={carregando}>
+        <Text style={styles.botaoTexto}>{carregando ? 'Entrando...' : 'Entrar'}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => navigation.navigate('Cadastro')}>
+        <Text style={styles.link}>Não tem conta? Cadastre-se</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
-import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, FlatList } from 'react-native';
-import * as SQLite from 'expo-sqlite';
-import { styles, API_URL } from './App';
+function CadastroScreen({ navigation }) {
+  const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [carregando, setCarregando] = useState(false);
+
+  const handleCadastro = async () => {
+    if (!nome || !email || !senha) return Alert.alert('Atenção', 'Preencha todos os campos.');
+    if (senha.length < 6) return Alert.alert('Atenção', 'A senha precisa ter pelo menos 6 caracteres.');
+    try {
+      setCarregando(true);
+      const res = await fetch(`${API_URL}/cadastro`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome, email, senha }) });
+      const dados = await res.json();
+      if (!res.ok) throw new Error();
+      await AsyncStorage.setItem('usuario', JSON.stringify(dados));
+      navigation.replace('Home', { usuario: dados });
+    } catch (error) {
+      Alert.alert('Erro ao cadastrar', 'Verifique os dados e tente novamente.');
+    } finally {
+      setCarregando(false);
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.titulo}>Criar conta</Text>
+      <Text style={styles.subtitulo}>Comece a organizar sua rotina escolar</Text>
+      <TextInput style={styles.input} placeholder="Nome" placeholderTextColor={colors.textSecondary} value={nome} onChangeText={setNome} />
+      <TextInput style={styles.input} placeholder="E-mail" placeholderTextColor={colors.textSecondary} autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
+      <TextInput style={styles.input} placeholder="Senha (mín. 6 caracteres)" placeholderTextColor={colors.textSecondary} secureTextEntry value={senha} onChangeText={setSenha} />
+      <TouchableOpacity style={styles.botao} onPress={handleCadastro} disabled={carregando}>
+        <Text style={styles.botaoTexto}>{carregando ? 'Cadastrando...' : 'Cadastrar'}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+        <Text style={styles.link}>Já tem conta? Entrar</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const ATALHOS = [
+  { titulo: 'Agenda', descricao: 'Veja suas atividades e compromissos', tela: 'Agenda' },
+  { titulo: 'Horários', descricao: 'Consulte o horário das aulas', tela: null },
+  { titulo: 'Notas', descricao: 'Acompanhe seu desempenho', tela: null },
+  { titulo: 'Metas de estudo', descricao: 'Defina e acompanhe suas metas', tela: null },
+];
+
+function HomeScreen({ navigation, route }) {
+  const [usuario, setUsuario] = useState(route.params?.usuario ?? null);
+
+  useEffect(() => {
+    if (!usuario) AsyncStorage.getItem('usuario').then((v) => v && setUsuario(JSON.parse(v)));
+  }, []);
+
+  const handleSair = async () => {
+    await AsyncStorage.removeItem('usuario');
+    navigation.replace('Login');
+  };
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.saudacao}>Olá{usuario?.email ? ',' : '!'}</Text>
+          {usuario?.email ? <Text style={styles.emailUsuario}>{usuario.email}</Text> : null}
+        </View>
+        <TouchableOpacity onPress={handleSair}>
+          <Text style={styles.sair}>Sair</Text>
+        </TouchableOpacity>
+      </View>
+      <Text style={styles.secaoTitulo}>Sua rotina escolar</Text>
+      {ATALHOS.map((item) => (
+        <TouchableOpacity key={item.titulo} style={styles.card} activeOpacity={0.8} onPress={() => item.tela && navigation.navigate(item.tela)}>
+          <Text style={styles.cardTitulo}>{item.titulo}</Text>
+          <Text style={styles.cardDescricao}>{item.descricao}</Text>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  );
+}
 
 let localDbPromise = null;
 function getLocalDb() {
@@ -180,7 +187,7 @@ async function iniciarBancoLocal() {
   `);
 }
 
-export default function AgendaScreen({ navigation }) {
+function AgendaScreen({ navigation }) {
   const [atividades, setAtividades] = useState([]);
   const [novoTitulo, setNovoTitulo] = useState('');
   const [novaData, setNovaData] = useState('');
@@ -251,8 +258,8 @@ export default function AgendaScreen({ navigation }) {
       </View>
 
       <View style={styles.formAgenda}>
-        <TextInput style={styles.input} placeholder="Título da atividade" placeholderTextColor={styles.cardDescricao.color} value={novoTitulo} onChangeText={setNovoTitulo} />
-        <TextInput style={styles.input} placeholder="Data (ex: 25/09)" placeholderTextColor={styles.cardDescricao.color} value={novaData} onChangeText={setNovaData} />
+        <TextInput style={styles.input} placeholder="Título da atividade" placeholderTextColor={colors.textSecondary} value={novoTitulo} onChangeText={setNovoTitulo} />
+        <TextInput style={styles.input} placeholder="Data (ex: 25/09)" placeholderTextColor={colors.textSecondary} value={novaData} onChangeText={setNovaData} />
         <TouchableOpacity style={styles.botao} onPress={adicionarAtividade}>
           <Text style={styles.botaoTexto}>Adicionar</Text>
         </TouchableOpacity>
@@ -283,124 +290,17 @@ export default function AgendaScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F6FA',
-  },
+const Stack = createNativeStackNavigator();
 
-  content: {
-    padding: 20,
-  },
-
-  titulo: {
-    fontSize: 30,
-    fontWeight: 'bold',
-    color: '#202124',
-  },
-
-  subtitulo: {
-    marginTop: 5,
-    fontSize: 15,
-    color: '#777',
-  },
-
-  resumo: {
-    marginTop: 25,
-    padding: 20,
-    backgroundColor: '#6C4AB6',
-    borderRadius: 18,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-
-  resumoItem: {
-    alignItems: 'center',
-  },
-
-  numero: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFF',
-  },
-
-  resumoTexto: {
-    marginTop: 4,
-    color: '#E5DFFF',
-  },
-
-  tituloSecao: {
-    marginTop: 28,
-    marginBottom: 12,
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#202124',
-  },
-
-  tarefa: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    elevation: 2,
-  },
-
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#6C4AB6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  checkboxConcluido: {
-    backgroundColor: '#6C4AB6',
-  },
-
-  check: {
-    color: '#FFF',
-    fontWeight: 'bold',
-  },
-
-  tarefaTexto: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 15,
-    color: '#333',
-  },
-
-  tarefaConcluida: {
-    color: '#999',
-    textDecorationLine: 'line-through',
-  },
-
-  menu: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-
-  menuItem: {
-    width: '48%',
-    backgroundColor: '#FFF',
-    borderRadius: 14,
-    padding: 18,
-    marginBottom: 10,
-    alignItems: 'center',
-  },
-
-  icone: {
-    fontSize: 28,
-  },
-
-  menuTexto: {
-    marginTop: 8,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-});
+export default function App() {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Cadastro" component={CadastroScreen} />
+        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Agenda" component={AgendaScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
