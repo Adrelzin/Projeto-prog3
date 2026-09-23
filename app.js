@@ -290,6 +290,178 @@ function AgendaScreen({ navigation }) {
   );
 }
 
+function TarefasScreen({ navigation }) {
+  const [tarefas, salvar] = useArmazenado('tarefas', []);
+  const [titulo, setTitulo] = useState('');
+  const [erro, setErro] = useState('');
+
+  const adicionar = () => {
+    if (!titulo.trim()) return setErro('Digite o título da tarefa.');
+    setErro('');
+    salvar([{ id: Date.now().toString(), titulo: titulo.trim(), feita: false }, ...tarefas]);
+    setTitulo('');
+  };
+  const alternar = (id) => salvar(tarefas.map((t) => (t.id === id ? { ...t, feita: !t.feita } : t)));
+  const remover = (id) => salvar(tarefas.filter((t) => t.id !== id));
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+      <Cabecalho navigation={navigation} titulo="Tarefas" />
+      <TextInput style={styles.input} placeholder="Nova tarefa" placeholderTextColor={colors.textSecondary} value={titulo} onChangeText={setTitulo} />
+      {erro ? <Text style={styles.erro}>{erro}</Text> : null}
+      <TouchableOpacity style={styles.botao} onPress={adicionar}>
+        <Text style={styles.botaoTexto}>Adicionar</Text>
+      </TouchableOpacity>
+      <View style={styles.espaco} />
+      {tarefas.length === 0 ? <Text style={styles.cardDescricao}>Nenhuma tarefa ainda.</Text> : null}
+      {tarefas.map((t) => (
+        <View key={t.id} style={[styles.card, styles.linhaEntre]}>
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => alternar(t.id)}>
+            <Text style={[styles.cardTitulo, t.feita && styles.riscado]}>{t.titulo}</Text>
+            <Text style={styles.cardTipo}>{t.feita ? 'Concluída' : 'Pendente'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => remover(t.id)}>
+            <Text style={styles.remover}>Excluir</Text>
+          </TouchableOpacity>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
+const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+const INICIAIS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+const chaveDia = (a, m, d) => `${a}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+function CalendarioScreen({ navigation }) {
+  const hoje = new Date();
+  const [ano, setAno] = useState(hoje.getFullYear());
+  const [mes, setMes] = useState(hoje.getMonth());
+  const [dia, setDia] = useState(hoje.getDate());
+  const [eventos, salvar] = useArmazenado('eventos', {});
+  const [titulo, setTitulo] = useState('');
+  const [erro, setErro] = useState('');
+
+  const trocarMes = (delta) => {
+    const d = new Date(ano, mes + delta, 1);
+    setAno(d.getFullYear());
+    setMes(d.getMonth());
+    setDia(1);
+  };
+
+  const inicio = new Date(ano, mes, 1).getDay();
+  const total = new Date(ano, mes + 1, 0).getDate();
+  const celulas = [...Array(inicio).fill(null), ...Array.from({ length: total }, (_, i) => i + 1)];
+  const chaveSel = chaveDia(ano, mes, dia);
+  const doDia = eventos[chaveSel] ?? [];
+
+  const adicionar = () => {
+    if (!titulo.trim()) return setErro('Digite o título do evento.');
+    setErro('');
+    salvar({ ...eventos, [chaveSel]: [...doDia, { id: Date.now().toString(), titulo: titulo.trim() }] });
+    setTitulo('');
+  };
+  const remover = (id) => salvar({ ...eventos, [chaveSel]: doDia.filter((e) => e.id !== id) });
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+      <Cabecalho navigation={navigation} titulo="Calendário" />
+      <View style={styles.linhaEntre}>
+        <TouchableOpacity onPress={() => trocarMes(-1)}>
+          <Text style={styles.voltar}>‹ Anterior</Text>
+        </TouchableOpacity>
+        <Text style={styles.secaoTitulo}>{MESES[mes]} {ano}</Text>
+        <TouchableOpacity onPress={() => trocarMes(1)}>
+          <Text style={styles.voltar}>Próximo ›</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.grade}>
+        {INICIAIS.map((l, i) => <Text key={i} style={styles.diaSemana}>{l}</Text>)}
+        {celulas.map((d, i) =>
+          d ? (
+            <TouchableOpacity key={i} style={[styles.celula, d === dia && styles.celulaAtiva]} onPress={() => setDia(d)}>
+              <Text style={[styles.celulaTexto, d === dia && styles.chipTextoAtivo]}>{d}</Text>
+              {eventos[chaveDia(ano, mes, d)]?.length ? <View style={styles.ponto} /> : null}
+            </TouchableOpacity>
+          ) : (
+            <View key={i} style={styles.celula} />
+          )
+        )}
+      </View>
+      <Text style={styles.secaoTitulo}>{String(dia).padStart(2, '0')}/{String(mes + 1).padStart(2, '0')}/{ano}</Text>
+      <TextInput style={styles.input} placeholder="Novo evento" placeholderTextColor={colors.textSecondary} value={titulo} onChangeText={setTitulo} />
+      {erro ? <Text style={styles.erro}>{erro}</Text> : null}
+      <TouchableOpacity style={styles.botao} onPress={adicionar}>
+        <Text style={styles.botaoTexto}>Adicionar</Text>
+      </TouchableOpacity>
+      <View style={styles.espaco} />
+      {doDia.length === 0 ? <Text style={styles.cardDescricao}>Nenhum evento neste dia.</Text> : null}
+      {doDia.map((e) => (
+        <View key={e.id} style={[styles.card, styles.linhaEntre]}>
+          <Text style={[styles.cardTitulo, { flex: 1 }]}>{e.titulo}</Text>
+          <TouchableOpacity onPress={() => remover(e.id)}>
+            <Text style={styles.remover}>Excluir</Text>
+          </TouchableOpacity>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
+const SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+function HorariosScreen({ navigation }) {
+  const [aulas, salvar] = useArmazenado('horarios', {});
+  const [dia, setDia] = useState('Seg');
+  const [hora, setHora] = useState('');
+  const [materia, setMateria] = useState('');
+  const [erro, setErro] = useState('');
+
+  const doDia = [...(aulas[dia] ?? [])].sort((a, b) => a.hora.localeCompare(b.hora));
+
+  const adicionar = () => {
+    if (!horaValida(hora)) return setErro('Use o formato HH:MM (ex: 07:30).');
+    if (!materia.trim()) return setErro('Digite a disciplina.');
+    setErro('');
+    salvar({ ...aulas, [dia]: [...(aulas[dia] ?? []), { id: Date.now().toString(), hora, materia: materia.trim() }] });
+    setHora('');
+    setMateria('');
+  };
+  const remover = (id) => salvar({ ...aulas, [dia]: (aulas[dia] ?? []).filter((a) => a.id !== id) });
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+      <Cabecalho navigation={navigation} titulo="Horários" />
+      <View style={styles.chips}>
+        {SEMANA.map((s) => (
+          <TouchableOpacity key={s} style={[styles.chip, s === dia && styles.chipAtivo]} onPress={() => setDia(s)}>
+            <Text style={[styles.chipTexto, s === dia && styles.chipTextoAtivo]}>{s}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <TextInput style={styles.input} placeholder="Horário (ex: 07:30)" placeholderTextColor={colors.textSecondary} keyboardType="numbers-and-punctuation" value={hora} onChangeText={setHora} />
+      <TextInput style={styles.input} placeholder="Disciplina" placeholderTextColor={colors.textSecondary} value={materia} onChangeText={setMateria} />
+      {erro ? <Text style={styles.erro}>{erro}</Text> : null}
+      <TouchableOpacity style={styles.botao} onPress={adicionar}>
+        <Text style={styles.botaoTexto}>Adicionar aula</Text>
+      </TouchableOpacity>
+      <View style={styles.espaco} />
+      {doDia.length === 0 ? <Text style={styles.cardDescricao}>Nenhuma aula neste dia.</Text> : null}
+      {doDia.map((a) => (
+        <View key={a.id} style={[styles.card, styles.linha]}>
+          <View style={styles.dataBox}>
+            <Text style={styles.dataTexto}>{a.hora}</Text>
+          </View>
+          <Text style={[styles.cardTitulo, { flex: 1, marginBottom: 0 }]}>{a.materia}</Text>
+          <TouchableOpacity onPress={() => remover(a.id)}>
+            <Text style={styles.remover}>Excluir</Text>
+          </TouchableOpacity>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
 const Stack = createNativeStackNavigator();
 
 export default function App() {
