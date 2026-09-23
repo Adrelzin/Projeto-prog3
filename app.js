@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, FlatList, StyleSheet, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, FlatList, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as SQLite from 'expo-sqlite';
+import { styles, colors } from './styles';
 
 function getApiUrl() {
   const debuggerHost = Constants.expoConfig?.hostUri || Constants.manifest2?.extra?.expoGo?.debuggerHost;
@@ -15,40 +16,34 @@ function getApiUrl() {
 
 export const API_URL = getApiUrl();
 
-const colors = {
-  background: '#FAF6F1',
-  surface: '#FFFFFF',
-  tan: '#BF9B7A',
-  brown: '#593E2E',
-  olive: '#555934',
-  textPrimary: '#3A2B22',
-  textSecondary: '#7A6A5D',
-  border: '#E4D8CB',
-};
+const horaValida = (h) => /^([01]\d|2[0-3]):[0-5]\d$/.test(h);
 
-export const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, justifyContent: 'center', paddingHorizontal: 28 },
-  titulo: { fontSize: 28, fontWeight: '700', color: colors.brown, textAlign: 'center' },
-  subtitulo: { fontSize: 15, color: colors.textSecondary, textAlign: 'center', marginTop: 4, marginBottom: 32 },
-  input: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: colors.textPrimary, marginBottom: 14 },
-  botao: { backgroundColor: colors.olive, borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
-  botaoTexto: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
-  link: { color: colors.tan, textAlign: 'center', marginTop: 20, fontSize: 14 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 },
-  saudacao: { fontSize: 22, fontWeight: '700', color: colors.brown },
-  emailUsuario: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
-  sair: { fontSize: 14, color: colors.olive, fontWeight: '600' },
-  secaoTitulo: { fontSize: 16, fontWeight: '600', color: colors.textPrimary, marginBottom: 14 },
-  card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 18, marginBottom: 14 },
-  cardTitulo: { fontSize: 16, fontWeight: '600', color: colors.brown, marginBottom: 4 },
-  cardDescricao: { fontSize: 13, color: colors.textSecondary },
-  voltar: { fontSize: 14, color: colors.olive, fontWeight: '600' },
-  adicionar: { fontSize: 14, color: colors.olive, fontWeight: '600' },
-  formAgenda: { marginBottom: 20 },
-  dataBox: { backgroundColor: colors.tan, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10, marginRight: 14 },
-  dataTexto: { color: '#FFFFFF', fontWeight: '700', fontSize: 12 },
-  cardTipo: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
-});
+function useArmazenado(chave, inicial) {
+  const [valor, setValor] = useState(inicial);
+
+  useEffect(() => {
+    AsyncStorage.getItem(chave).then((v) => v && setValor(JSON.parse(v)));
+  }, []);
+
+  const salvar = (novo) => {
+    setValor(novo);
+    AsyncStorage.setItem(chave, JSON.stringify(novo));
+  };
+
+  return [valor, salvar];
+}
+
+function Cabecalho({ navigation, titulo }) {
+  return (
+    <View style={styles.header}>
+      <TouchableOpacity onPress={() => navigation.goBack()}>
+        <Text style={styles.voltar}>‹ Voltar</Text>
+      </TouchableOpacity>
+      <Text style={styles.titulo}>{titulo}</Text>
+      <View style={{ width: 40 }} />
+    </View>
+  );
+}
 
 function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -129,7 +124,9 @@ function CadastroScreen({ navigation }) {
 
 const ATALHOS = [
   { titulo: 'Agenda', descricao: 'Veja suas atividades e compromissos', tela: 'Agenda' },
-  { titulo: 'Horários', descricao: 'Consulte o horário das aulas', tela: null },
+  { titulo: 'Tarefas', descricao: 'Organize o que precisa fazer', tela: 'Tarefas' },
+  { titulo: 'Calendário', descricao: 'Eventos e provas por dia', tela: 'Calendario' },
+  { titulo: 'Horários', descricao: 'Consulte o horário das aulas', tela: 'Horarios' },
   { titulo: 'Notas', descricao: 'Acompanhe seu desempenho', tela: null },
   { titulo: 'Metas de estudo', descricao: 'Defina e acompanhe suas metas', tela: null },
 ];
@@ -472,6 +469,9 @@ export default function App() {
         <Stack.Screen name="Cadastro" component={CadastroScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Agenda" component={AgendaScreen} />
+        <Stack.Screen name="Tarefas" component={TarefasScreen} />
+        <Stack.Screen name="Calendario" component={CalendarioScreen} />
+        <Stack.Screen name="Horarios" component={HorariosScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
