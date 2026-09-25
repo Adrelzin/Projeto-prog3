@@ -616,6 +616,90 @@ function FocoScreen({ navigation }) {
   );
 }
 
+function LembretesScreen({ navigation }) {
+  const [lembretes, salvar] = useArmazenado('lembretes', []);
+  const [titulo, setTitulo] = useState('');
+  const [hora, setHora] = useState('');
+  const [erro, setErro] = useState('');
+
+  const adicionar = () => {
+    if (!titulo.trim()) return setErro('Digite o texto do lembrete.');
+    if (!horaValida(hora)) return setErro('Use o formato HH:MM (ex: 18:00).');
+    setErro('');
+    salvar([...lembretes, { id: Date.now().toString(), titulo: titulo.trim(), hora, ativo: true }].sort((a, b) => a.hora.localeCompare(b.hora)));
+    setTitulo('');
+    setHora('');
+  };
+  const alternar = (id) => salvar(lembretes.map((l) => (l.id === id ? { ...l, ativo: !l.ativo } : l)));
+  const remover = (id) => salvar(lembretes.filter((l) => l.id !== id));
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+      <Cabecalho navigation={navigation} titulo="Lembretes" />
+      <TextInput style={styles.input} placeholder="Lembrete (ex: Estudar Física)" placeholderTextColor={colors.textSecondary} value={titulo} onChangeText={setTitulo} />
+      <TextInput style={styles.input} placeholder="Horário (ex: 18:00)" placeholderTextColor={colors.textSecondary} keyboardType="numbers-and-punctuation" value={hora} onChangeText={setHora} />
+      {erro ? <Text style={styles.erro}>{erro}</Text> : null}
+      <TouchableOpacity style={styles.botao} onPress={adicionar}>
+        <Text style={styles.botaoTexto}>Adicionar lembrete</Text>
+      </TouchableOpacity>
+      <View style={styles.espaco} />
+      {lembretes.length === 0 ? <Text style={styles.cardDescricao}>Nenhum lembrete ainda.</Text> : null}
+      {lembretes.map((l) => (
+        <View key={l.id} style={[styles.card, styles.linha]}>
+          <View style={styles.dataBox}>
+            <Text style={styles.dataTexto}>{l.hora}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.cardTitulo, !l.ativo && styles.riscado]}>{l.titulo}</Text>
+            <TouchableOpacity onPress={() => remover(l.id)}>
+              <Text style={styles.remover}>Excluir</Text>
+            </TouchableOpacity>
+          </View>
+          <Switch value={l.ativo} onValueChange={() => alternar(l.id)} trackColor={{ true: colors.olive, false: colors.border }} />
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
+const OPCOES = [
+  ['fonteGrande', 'Fonte grande'],
+  ['altoContraste', 'Alto contraste'],
+];
+
+function PerfilScreen({ navigation }) {
+  const [usuario, setUsuario] = useState(null);
+  const [acess, salvar] = useArmazenado('acessibilidade', { fonteGrande: false, altoContraste: false });
+
+  useEffect(() => {
+    AsyncStorage.getItem('usuario').then((v) => v && setUsuario(JSON.parse(v)));
+  }, []);
+
+  const fundo = acess.altoContraste ? '#000000' : colors.surface;
+  const texto = acess.altoContraste ? '#FFFFFF' : colors.textPrimary;
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+      <Cabecalho navigation={navigation} titulo="Perfil" />
+      <View style={styles.card}>
+        <Text style={styles.cardTitulo}>{usuario?.nome ?? 'Estudante'}</Text>
+        <Text style={styles.cardDescricao}>{usuario?.email ?? 'E-mail não disponível'}</Text>
+      </View>
+      <Text style={styles.secaoTitulo}>Acessibilidade</Text>
+      {OPCOES.map(([chave, rotulo]) => (
+        <View key={chave} style={[styles.card, styles.linhaEntre]}>
+          <Text style={[styles.cardTitulo, { marginBottom: 0 }]}>{rotulo}</Text>
+          <Switch value={acess[chave]} onValueChange={(v) => salvar({ ...acess, [chave]: v })} trackColor={{ true: colors.olive, false: colors.border }} />
+        </View>
+      ))}
+      <Text style={styles.secaoTitulo}>Pré-visualização</Text>
+      <View style={[styles.card, { backgroundColor: fundo }]}>
+        <Text style={{ color: texto, fontSize: acess.fonteGrande ? 22 : 15 }}>Sua rotina escolar organizada em um só lugar.</Text>
+      </View>
+    </ScrollView>
+  );
+}
+
 const Stack = createNativeStackNavigator();
 
 export default function App() {
