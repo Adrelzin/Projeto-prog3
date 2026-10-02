@@ -1,3 +1,4 @@
+#verificar api do google agenda#
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, FlatList, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
