@@ -93,8 +93,17 @@ function CadastroScreen({ navigation }) {
   );
 }
 
+const TELAS_DEMO = [
+  { nome: 'Login', tela: 'Login' },
+  { nome: 'Cadastro', tela: 'Cadastro' },
+  { nome: 'Home', tela: 'Home' },
+  { nome: 'Agenda', tela: 'Agenda' },
+  { nome: 'Tarefa', tela: 'Tarefa'},
+];
+
 const ATALHOS = [
   { titulo: 'Agenda', descricao: 'Veja suas atividades e compromissos', tela: 'Agenda' },
+  { titulo: 'Tarefas', descricao: 'Gerencie suas entregas e prazos', tela: 'Tarefas' },
 ];
 
 function HomeScreen({ navigation, route }) {
@@ -253,6 +262,26 @@ function AgendaScreen({ navigation }) {
   );
 }
 
+function TarefaScreen({ navigation }){
+  return(
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.voltar}>Voltar</Text>
+        </TouchableOpacity>
+        <Text style ={styles.titulo}>Taregas</Text>
+        <View style={{ width: 40}}/>
+        </View>
+
+        <Text style={styles.secaoTitulo}>Suas Tarefas Pendentes</Text>
+        <View style={styles.card}>
+          <Text style={styles.cardTitulo}>Trabalho de história</Text>
+          <Text style={styles.cardDescricao}>Entrega até 15/10</Text>
+      </View>
+    </View>
+  )
+}
+
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -263,6 +292,7 @@ export default function App() {
         <Stack.Screen name="Cadastro" component={CadastroScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Agenda" component={AgendaScreen} />
+        <Stack.Screen name="Tarefa" component={TarefaScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
