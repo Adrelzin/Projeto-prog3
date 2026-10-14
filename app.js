@@ -1,11 +1,12 @@
-#verificar api do google agenda#
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, FlatList, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as SQLite from 'expo-sqlite';
+import { Ionicons } from '@expo/vector-icons';
 import { styles, colors } from './styles';
 
 function getApiUrl() {
@@ -30,7 +31,7 @@ function LoginScreen({ navigation }) {
       const dados = await res.json();
       if (!res.ok) throw new Error();
       await AsyncStorage.setItem('usuario', JSON.stringify(dados));
-      navigation.replace('Home', { usuario: dados });
+      navigation.replace('Main', { screen: 'Home', params: { usuario: dados } });
     } catch (error) {
       Alert.alert('Erro ao entrar', 'E-mail ou senha inválidos.');
     } finally {
@@ -44,9 +45,15 @@ function LoginScreen({ navigation }) {
       <Text style={styles.subtitulo}>Entre para continuar</Text>
       <TextInput style={styles.input} placeholder="E-mail" placeholderTextColor={colors.textSecondary} autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
       <TextInput style={styles.input} placeholder="Senha" placeholderTextColor={colors.textSecondary} secureTextEntry value={senha} onChangeText={setSenha} />
+
       <TouchableOpacity style={styles.botao} onPress={handleLogin} disabled={carregando}>
         <Text style={styles.botaoTexto}>{carregando ? 'Entrando...' : 'Entrar'}</Text>
       </TouchableOpacity>
+
+      <TouchableOpacity style={[styles.botao, { backgroundColor: colors.tan, marginTop: 10 }]} onPress={() => navigation.navigate('Main')}>
+        <Text style={styles.botaoTexto}>Entrar sem login (Modo Demo)</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity onPress={() => navigation.navigate('Cadastro')}>
         <Text style={styles.link}>Não tem conta? Cadastre-se</Text>
       </TouchableOpacity>
@@ -69,7 +76,7 @@ function CadastroScreen({ navigation }) {
       const dados = await res.json();
       if (!res.ok) throw new Error();
       await AsyncStorage.setItem('usuario', JSON.stringify(dados));
-      navigation.replace('Home', { usuario: dados });
+      navigation.replace('Main', { screen: 'Home', params: { usuario: dados } });
     } catch (error) {
       Alert.alert('Erro ao cadastrar', 'Verifique os dados e tente novamente.');
     } finally {
@@ -84,28 +91,21 @@ function CadastroScreen({ navigation }) {
       <TextInput style={styles.input} placeholder="Nome" placeholderTextColor={colors.textSecondary} value={nome} onChangeText={setNome} />
       <TextInput style={styles.input} placeholder="E-mail" placeholderTextColor={colors.textSecondary} autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
       <TextInput style={styles.input} placeholder="Senha (mín. 6 caracteres)" placeholderTextColor={colors.textSecondary} secureTextEntry value={senha} onChangeText={setSenha} />
+
       <TouchableOpacity style={styles.botao} onPress={handleCadastro} disabled={carregando}>
         <Text style={styles.botaoTexto}>{carregando ? 'Cadastrando...' : 'Cadastrar'}</Text>
       </TouchableOpacity>
+
+      <TouchableOpacity style={[styles.botao, { backgroundColor: colors.tan, marginTop: 10 }]} onPress={() => navigation.navigate('Main')}>
+        <Text style={styles.botaoTexto}>Entrar sem cadastro (Modo Demo)</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity onPress={() => navigation.navigate('Login')}>
         <Text style={styles.link}>Já tem conta? Entrar</Text>
       </TouchableOpacity>
     </View>
   );
 }
-
-const TELAS_DEMO = [
-  { nome: 'Login', tela: 'Login' },
-  { nome: 'Cadastro', tela: 'Cadastro' },
-  { nome: 'Home', tela: 'Home' },
-  { nome: 'Agenda', tela: 'Agenda' },
-  { nome: 'Tarefa', tela: 'Tarefa'},
-];
-
-const ATALHOS = [
-  { titulo: 'Agenda', descricao: 'Veja suas atividades e compromissos', tela: 'Agenda' },
-  { titulo: 'Tarefas', descricao: 'Gerencie suas entregas e prazos', tela: 'Tarefas' },
-];
 
 function HomeScreen({ navigation, route }) {
   const [usuario, setUsuario] = useState(route.params?.usuario ?? null);
@@ -116,27 +116,21 @@ function HomeScreen({ navigation, route }) {
 
   const handleSair = async () => {
     await AsyncStorage.removeItem('usuario');
-    navigation.replace('Login');
+    navigation.getParent().replace('Login');
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.saudacao}>Olá{usuario?.email ? ',' : '!'}</Text>
-          {usuario?.email ? <Text style={styles.emailUsuario}>{usuario.email}</Text> : null}
+          <Text style={styles.saudacao}>Olá{usuario?.email ? `, ${usuario.email}` : '!'}</Text>
+          <Text style={styles.emailUsuario}>Modo de Navegação Livre</Text>
         </View>
         <TouchableOpacity onPress={handleSair}>
           <Text style={styles.sair}>Sair</Text>
         </TouchableOpacity>
       </View>
-      <Text style={styles.secaoTitulo}>Sua rotina escolar</Text>
-      {ATALHOS.map((item) => (
-        <TouchableOpacity key={item.titulo} style={styles.card} activeOpacity={0.8} onPress={() => item.tela && navigation.navigate(item.tela)}>
-          <Text style={styles.cardTitulo}>{item.titulo}</Text>
-          <Text style={styles.cardDescricao}>{item.descricao}</Text>
-        </TouchableOpacity>
-      ))}
+
     </ScrollView>
   );
 }
@@ -160,7 +154,7 @@ async function iniciarBancoLocal() {
   `);
 }
 
-function AgendaScreen({ navigation }) {
+function CalendarioScreen() {
   const [atividades, setAtividades] = useState([]);
   const [novoTitulo, setNovoTitulo] = useState('');
   const [novaData, setNovaData] = useState('');
@@ -223,11 +217,7 @@ function AgendaScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.voltar}>‹ Voltar</Text>
-        </TouchableOpacity>
-        <Text style={styles.titulo}>Agenda</Text>
-        <View style={{ width: 40 }} />
+        <Text style={styles.titulo}>Calendário</Text>
       </View>
 
       <View style={styles.formAgenda}>
@@ -263,27 +253,159 @@ function AgendaScreen({ navigation }) {
   );
 }
 
-function TarefaScreen({ navigation }){
-  return(
+function useLista(chave) {
+  const [itens, setItens] = useState([]);
+
+  useEffect(() => {
+    AsyncStorage.getItem(chave).then((v) => v && setItens(JSON.parse(v)));
+  }, []);
+
+  const salvar = (novos) => {
+    setItens(novos);
+    AsyncStorage.setItem(chave, JSON.stringify(novos));
+  };
+
+  return [itens, salvar];
+}
+
+function TarefaScreen() {
+  const [tarefas, salvar] = useLista('tarefas');
+  const [titulo, setTitulo] = useState('');
+  const [prazo, setPrazo] = useState('');
+  const [erro, setErro] = useState('');
+
+  const adicionar = () => {
+    if (!titulo || !prazo) return setErro('Preencha o título e o prazo.');
+    setErro('');
+    salvar([...tarefas, { id: Date.now().toString(), titulo, prazo, feita: false }]);
+    setTitulo('');
+    setPrazo('');
+  };
+
+  const alternar = (id) => salvar(tarefas.map((t) => (t.id === id ? { ...t, feita: !t.feita } : t)));
+  const remover = (id) => salvar(tarefas.filter((t) => t.id !== id));
+
+  return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.voltar}>Voltar</Text>
-        </TouchableOpacity>
-        <Text style ={styles.titulo}>Taregas</Text>
-        <View style={{ width: 40}}/>
-        </View>
-
-        <Text style={styles.secaoTitulo}>Suas Tarefas Pendentes</Text>
-        <View style={styles.card}>
-          <Text style={styles.cardTitulo}>Trabalho de história</Text>
-          <Text style={styles.cardDescricao}>Entrega até 15/10</Text>
+        <Text style={styles.titulo}>Tarefas</Text>
       </View>
+
+      <View style={styles.formAgenda}>
+        <TextInput style={styles.input} placeholder="Título da tarefa" placeholderTextColor={colors.textSecondary} value={titulo} onChangeText={setTitulo} />
+        <TextInput style={styles.input} placeholder="Prazo (ex: 15/10)" placeholderTextColor={colors.textSecondary} value={prazo} onChangeText={setPrazo} />
+        {erro ? <Text style={styles.erro}>{erro}</Text> : null}
+        <TouchableOpacity style={styles.botao} onPress={adicionar}>
+          <Text style={styles.botaoTexto}>Adicionar</Text>
+        </TouchableOpacity>
+      </View>
+
+      <FlatList
+        data={tarefas}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        ListEmptyComponent={<Text style={styles.cardDescricao}>Nenhuma tarefa ainda.</Text>}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <TouchableOpacity onPress={() => alternar(item.id)}>
+              <Ionicons name={item.feita ? 'checkbox' : 'square-outline'} size={26} color={colors.olive} style={{ marginRight: 12 }} />
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.cardTitulo, item.feita && styles.feita]}>{item.titulo}</Text>
+              <Text style={styles.cardDescricao}>Entrega até {item.prazo}</Text>
+            </View>
+            <TouchableOpacity onPress={() => remover(item.id)}>
+              <Ionicons name="trash-outline" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        )}
+      />
     </View>
-  )
+  );
+}
+
+function HorariosScreen() {
+  const [horarios, salvar] = useLista('horarios');
+  const [materia, setMateria] = useState('');
+  const [dia, setDia] = useState('');
+  const [hora, setHora] = useState('');
+  const [erro, setErro] = useState('');
+
+  const adicionar = () => {
+    if (!materia || !dia || !hora) return setErro('Preencha matéria, dia e horário.');
+    setErro('');
+    salvar([...horarios, { id: Date.now().toString(), materia, dia, hora }]);
+    setMateria('');
+    setDia('');
+    setHora('');
+  };
+
+  const remover = (id) => salvar(horarios.filter((h) => h.id !== id));
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.titulo}>Horários</Text>
+      </View>
+
+      <View style={styles.formAgenda}>
+        <TextInput style={styles.input} placeholder="Matéria" placeholderTextColor={colors.textSecondary} value={materia} onChangeText={setMateria} />
+        <TextInput style={styles.input} placeholder="Dia (ex: Seg)" placeholderTextColor={colors.textSecondary} value={dia} onChangeText={setDia} />
+        <TextInput style={styles.input} placeholder="Horário (ex: 08:00)" placeholderTextColor={colors.textSecondary} value={hora} onChangeText={setHora} />
+        {erro ? <Text style={styles.erro}>{erro}</Text> : null}
+        <TouchableOpacity style={styles.botao} onPress={adicionar}>
+          <Text style={styles.botaoTexto}>Adicionar</Text>
+        </TouchableOpacity>
+      </View>
+
+      <FlatList
+        data={horarios}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        ListEmptyComponent={<Text style={styles.cardDescricao}>Nenhum horário ainda.</Text>}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <View style={styles.dataBox}>
+              <Text style={styles.dataTexto}>{item.dia} {item.hora}</Text>
+            </View>
+            <Text style={[styles.cardTitulo, { flex: 1 }]}>{item.materia}</Text>
+            <TouchableOpacity onPress={() => remover(item.id)}>
+              <Ionicons name="trash-outline" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        )}
+      />
+    </View>
+  );
 }
 
 const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
+
+const ICONES = {
+  Home: 'home-outline',
+  Tarefa: 'clipboard-outline',
+  Calendario: 'calendar-number-outline',
+  Horarios: 'time-outline',
+};
+
+function Tabs() {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: colors.olive,
+        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarIcon: ({ color, size }) => <Ionicons name={ICONES[route.name]} size={size} color={color} />,
+      })}
+    >
+      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Tarefa" component={TarefaScreen} options={{ title: 'Tarefas' }} />
+      <Tab.Screen name="Calendario" component={CalendarioScreen} options={{ title: 'Calendário' }} />
+      <Tab.Screen name="Horarios" component={HorariosScreen} options={{ title: 'Horários' }} />
+    </Tab.Navigator>
+  );
+}
 
 export default function App() {
   return (
@@ -291,9 +413,7 @@ export default function App() {
       <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Cadastro" component={CadastroScreen} />
-        <Stack.Screen name="Home" component={HomeScreen} />
-        <Stack.Screen name="Agenda" component={AgendaScreen} />
-        <Stack.Screen name="Tarefa" component={TarefaScreen} />
+        <Stack.Screen name="Main" component={Tabs} />
       </Stack.Navigator>
     </NavigationContainer>
   );
